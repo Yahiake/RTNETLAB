@@ -422,43 +422,6 @@ One of the most valuable parts of the project was understanding that an email pl
 
 ---
 
-# Project Structure
-
-The repository is organized to document the infrastructure and configuration process.
-
-```text
-RTNETLAB-Secure-Mailing/
-│
-├── README.md
-│
-├── docs/
-│   ├── architecture/
-│   ├── installation/
-│   ├── configuration/
-│   └── testing/
-│
-├── postfix/
-│   └── configuration/
-│
-├── dovecot/
-│   └── configuration/
-│
-├── openldap/
-│   └── configuration/
-│
-├── bind9/
-│   └── configuration/
-│
-├── rspamd/
-│   └── configuration/
-│
-├── roundcube/
-│   └── configuration/
-│
-└── screenshots/
-```
-
-> Configuration files in this repository should contain only sanitized example values. Private keys, passwords, real credentials, internal secrets, and sensitive infrastructure information must never be committed.
 
 ---
 
