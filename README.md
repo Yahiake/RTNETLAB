@@ -192,39 +192,6 @@ Every layer was verified independently before moving to the next — nothing was
 | Rspamd | Milter listening, dashboard reachable | `netstat -tulpn \| grep 12301` + web UI on `:11334` |
 | End-to-end | Full send/receive via web UI | Login → compose → send → verify LMTP delivery + headers |
 
-## Repository Structure
-
-```
-rtnetlab-secure-mail/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── docs/
-│   └── RTNETLAB-Full-Report.pdf        # full build log — written in French
-├── configs/
-│   ├── README.md                        # what was redacted/fixed, and why
-│   ├── netplan/50-cloud-init.yaml
-│   ├── hosts/hosts.rtnetlab.snippet
-│   ├── bind9/
-│   │   ├── named.conf.local
-│   │   └── zones/db.rtnetlab.lan
-│   ├── postfix/
-│   │   ├── main.cf
-│   │   ├── master.cf.append
-│   │   └── ldap-users.cf
-│   ├── dovecot/
-│   │   ├── dovecot.conf
-│   │   ├── dovecot-ldap.conf.ext
-│   │   └── conf.d/{10-auth.conf, 10-ssl.conf, auth-ldap.conf.ext}
-│   ├── ldap/{01-users.ldif, 02-test-user.ldif}
-│   ├── ssl/{openssl-san.cnf, generate-cert.sh}
-│   ├── apache/webmail.rtnetlab.lan.conf
-│   ├── roundcube/config.inc.php
-│   ├── opendkim/{opendkim.conf, key.table, signing.table, trusted.hosts}
-│   └── rspamd/{worker-controller.inc, dkim_signing.conf}
-└── screenshots/
-```
-
 ## Reproducing the Lab
 
 The full report walks through every step with terminal output and screenshots; here's the shape of it:
@@ -255,7 +222,7 @@ The full report walks through every step with terminal output and screenshots; h
 
 ## Lessons Learned & What I'd Improve
 
-- **Domain naming drifted mid-build.** Postfix was initially configured against `rtnetlab.local` before the project standardized on `rtnetlab.lan` for the DNS zone. Fixed in the configs here — see [`configs/README.md`](configs/README.md) for the full list of what was corrected.
+- **Domain naming drifted mid-build.** Postfix was initially configured against `rtnetlab.local` before the project standardized on `rtnetlab.lan` for the DNS zone. Fixed in the configs here — 
 - **DKIM ended up signed twice** — once via OpenDKIM, later via Rspamd's built-in signer. Functionally fine, but redundant; a cleaner build picks one and removes the other.
 - **Self-signed certificates work for a lab, not for production.** A real deployment needs its own internal CA (or ACME via an internal DNS-01 solver) so clients can validate the chain instead of clicking through warnings.
 - **No infrastructure-as-code.** Every service was configured by hand over SSH — great for learning what each directive does, not yet reproducible with a single command.
@@ -274,7 +241,7 @@ The full report walks through every step with terminal output and screenshots; h
 
 ## Full Report
 
-The complete build — every command, every config file, every screenshot, 65 pages — is documented in [`docs/RTNETLAB-Full-Report.pdf`](docs/RTNETLAB-Full-Report.pdf).
+The complete build — every command, every config file, every screenshot, 65 pages — is documented in [`Secure_Mailing_Application_for_Intranet-RTNETLAB.pdf`](Secure_Mailing_Application_for_Intranet-RTNETLAB.pdf).
 
 📄 **The report is written in French.** This README is the English executive summary; the PDF is the full lab notebook.
 
@@ -283,9 +250,8 @@ The complete build — every command, every config file, every screenshot, 65 pa
 **Yahia Kemari** — Telecommunications Engineer (M2), USTHB, Algeria.
 Interested in networks, infrastructure, cybersecurity, and automation.
 
-- LinkedIn:
-- Email:
-- Portfolio / other projects:
+- LinkedIn: https://www.linkedin.com/in/yahia-kemari/
+- Email: contact.kemari.yahia@gmail.com
 
 Open to opportunities in network engineering, systems/infrastructure administration, or security.
 
