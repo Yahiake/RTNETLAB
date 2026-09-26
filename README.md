@@ -261,51 +261,6 @@ Every layer was verified independently before moving to the next — nothing was
 | Rspamd | Milter listening, dashboard reachable | `netstat -tulpn \| grep 12301` + web UI on `:11334` |
 | End-to-end | Full send/receive via web UI | Login → compose → send → verify LMTP delivery + headers |
 
-## Repository Structure
-
-Suggested layout — organize your actual config files under `configs/`, each in its own subfolder, and drop the full write-up under `docs/`:
-
-```
-rtnetlab-secure-mail/
-├── README.md
-├── LICENSE
-├── docs/
-│   └── RTNETLAB-Full-Report.pdf        # the 65-page build log
-├── diagrams/
-│   └── architecture.png                 # exported from the Mermaid diagram above
-├── configs/
-│   ├── bind9/
-│   │   ├── named.conf.local
-│   │   └── db.rtnetlab.lan
-│   ├── postfix/
-│   │   ├── main.cf
-│   │   └── master.cf
-│   ├── dovecot/
-│   │   ├── dovecot.conf
-│   │   ├── conf.d/10-auth.conf
-│   │   └── dovecot-ldap.conf.ext
-│   ├── ldap/
-│   │   └── users.ldif
-│   ├── rspamd/
-│   │   ├── worker-controller.inc
-│   │   └── dkim_signing.conf
-│   ├── opendkim/
-│   │   ├── key.table
-│   │   └── signing.table
-│   └── roundcube/
-│       └── config.inc.php
-└── screenshots/
-    ├── dns-resolution.png
-    ├── imap-telnet-session.png
-    ├── webmail-login.png
-    ├── rspamd-dashboard.png
-    └── tls-handshake.png
-```
-
-### ⚠️ Before you push real configs
-
-Strip anything sensitive before committing: LDAP bind passwords, `des_key` in `config.inc.php`, real IPs if you'd rather not disclose your lab network, and the DKIM private key (`*.private` / `*.key` files — only the **public** key belongs in DNS/git). Swap real values for `<REDACTED>` placeholders, the same way the snippets above do.
-
 ## Reproducing the Lab
 
 The full report walks through every step with terminal output and screenshots; here's the shape of it:
