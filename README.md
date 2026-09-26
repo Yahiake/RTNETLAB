@@ -171,7 +171,7 @@ _dmarc IN TXT "v=DMARC1; p=none; rua=mailto:admin@rtnetlab.lan"
 - **DKIM** cryptographically signs every outgoing message; the receiving side verifies it against the public key published above.
 - **DMARC** ties SPF and DKIM into a policy the receiving server can act on, plus a reporting address for visibility into abuse attempts.
 
-Rspamd sits in front of delivery as a milter, scoring every message and applying the DKIM signature before Dovecot ever sees it. Full configs for all of this are in [`configs/`](configs/).
+Rspamd sits in front of delivery as a milter, scoring every message and applying the DKIM signature before Dovecot ever sees it
 
 ## Testing & Validation
 
