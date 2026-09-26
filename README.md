@@ -71,7 +71,7 @@ Every service is production-shaped: virtual mailboxes instead of local Unix user
 | **Domain** | `rtnetlab.lan` — fully internal, resolved by a self-hosted BIND9 zone |
 | **Services integrated** | DNS, SMTP, IMAP/POP3, LDAP, HTTP/S, mail filtering — 7 daemons, wired together |
 | **Security layers** | TLS/SSL (self-signed, SAN), SASL auth, SPF, DKIM, DMARC, Rspamd scoring |
-| **Full report** | 65-page, command-by-command build log — in French — see [`docs/`](docs/RTNETLAB-Full-Report.pdf) |
+| **Full report** | 65-page, command-by-command build log — in French — see [`Secure_Mailing_Application_for_Intranet-RTNETLAB.pdf`](Secure_Mailing_Application_for_Intranet-RTNETLAB.pdf) |
 | **Context** | Networks & Telecommunications engineering project — USTHB, Algeria |
 
 ## Architecture
