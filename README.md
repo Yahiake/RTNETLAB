@@ -34,11 +34,9 @@
 - [Tech Stack](#tech-stack)
 - [How a Message Actually Moves Through the System](#how-a-message-actually-moves-through-the-system)
 - [Security Model](#security-model)
-- [Configuration Highlights](#configuration-highlights)
 - [Testing & Validation](#testing--validation)
 - [Repository Structure](#repository-structure)
 - [Reproducing the Lab](#reproducing-the-lab)
-- [Screenshots](#screenshots)
 - [Skills Demonstrated](#skills-demonstrated)
 - [Lessons Learned & What I'd Improve](#lessons-learned--what-id-improve)
 - [Roadmap](#roadmap)
@@ -63,7 +61,7 @@ RTNETLAB is a fully self-hosted email platform for a closed network (`rtnetlab.l
 - Authenticate once against a **centralized LDAP directory** — no per-service accounts
 - Trust that outgoing mail is **signed and policy-checked** (DKIM, SPF, DMARC, Rspamd scoring) the same way a real company domain would be
 
-It's not a toy demo — every service is production-shaped: virtual mailboxes instead of local Unix users, LMTP delivery instead of local pipes, a milter-based filtering chain, and TLS on every listener that carries credentials.
+Every service is production-shaped: virtual mailboxes instead of local Unix users, LMTP delivery instead of local pipes, a milter-based filtering chain, and TLS on every listener that carries credentials.
 
 ## At a Glance
 
@@ -71,9 +69,9 @@ It's not a toy demo — every service is production-shaped: virtual mailboxes in
 |---|---|
 | **Environment** | VirtualBox VM · Ubuntu Server 24.10 · 2 vCPU · 4 GB RAM · Bridged networking |
 | **Domain** | `rtnetlab.lan` — fully internal, resolved by a self-hosted BIND9 zone |
-| **Services integrated** | DNS, SMTP, IMAP/POP3, LDAP, HTTP/S, mail filtering (7 daemons, wired together) |
+| **Services integrated** | DNS, SMTP, IMAP/POP3, LDAP, HTTP/S, mail filtering — 7 daemons, wired together |
 | **Security layers** | TLS/SSL (self-signed, SAN), SASL auth, SPF, DKIM, DMARC, Rspamd scoring |
-| **Build log** | 65-page, command-by-command documented build (see [`/docs`](#full-report)) |
+| **Full report** | 65-page, command-by-command build log — in French — see [`docs/`](docs/RTNETLAB-Full-Report.pdf) |
 | **Context** | Networks & Telecommunications engineering project — USTHB, Algeria |
 
 ## Architecture
@@ -108,7 +106,7 @@ flowchart TB
     IMAP -. resolves .-> DNS
 ```
 
-Every arrow above is a protocol boundary I configured and tested individually before wiring the next one in — DNS first, then transport, then storage, then directory, then encryption, then filtering. That order matters: you can't debug SASL auth failures sanely if you're not sure DNS is resolving correctly yet.
+Every arrow above is a protocol boundary configured and tested individually before the next one was wired in — DNS first, then transport, then storage, then directory, then encryption, then filtering. That order matters: you can't debug a SASL auth failure sanely if you're not sure DNS is resolving yet.
 
 ## Tech Stack
 
@@ -149,7 +147,7 @@ sequenceDiagram
     D-->>U: Fetch INBOX
 ```
 
-Nothing here is delivered to a local Unix mailbox — every account is virtual, resolved against LDAP at submission time and again at delivery time, which is the same pattern used by real multi-tenant mail platforms.
+Nothing here is delivered to a local Unix mailbox — every account is virtual, resolved against LDAP at submission time and again at delivery time, the same pattern used by real multi-tenant mail platforms.
 
 ## Security Model
 
@@ -163,84 +161,17 @@ Nothing here is delivered to a local Unix mailbox — every account is virtual, 
 
 On top of transport encryption, outgoing mail carries three layers of domain-identity protection:
 
-- **SPF** — a DNS TXT record restricts which IP is allowed to claim `rtnetlab.lan` as a sender, rejecting trivial spoofing.
-- **DKIM** — every outgoing message is cryptographically signed; the receiving side verifies the signature against a public key published in DNS.
-- **DMARC** — ties SPF and DKIM together into a policy the receiving server can act on, plus a reporting address for visibility into abuse attempts.
-
-Rspamd sits in front of delivery as a milter, scoring every message and applying the DKIM signature before Dovecot ever sees it.
-
-## Configuration Highlights
-
-Representative snippets pulled straight from the working build (secrets replaced with placeholders — see the [note on secrets](#-before-you-push-real-configs) below).
-
-<details>
-<summary><strong>BIND9 — zone file (<code>db.rtnetlab.lan</code>)</strong></summary>
-
-```dns
-$TTL 604800
-@   IN  SOA  ns1.rtnetlab.lan. admin.rtnetlab.lan. ( 2 604800 86400 2419200 604800 )
-@   IN  NS   ns1.rtnetlab.lan.
-
-; A records
-ns1     IN A 192.168.1.45
-mail    IN A 192.168.1.45
-webmail IN A 192.168.1.45
-@       IN A 192.168.1.45
-
-; MX record
-@       IN MX 10 mail.rtnetlab.lan.
-
-; SPF
+```
 @   IN TXT "v=spf1 ip4:192.168.1.45 -all"
-
-; DMARC
+mail._domainkey IN TXT "v=DKIM1; h=sha256; k=rsa; p=..."
 _dmarc IN TXT "v=DMARC1; p=none; rua=mailto:admin@rtnetlab.lan"
 ```
-</details>
 
-<details>
-<summary><strong>Postfix — virtual mailbox routing (<code>main.cf</code>)</strong></summary>
+- **SPF** restricts which IP is allowed to claim `rtnetlab.lan` as a sender, rejecting trivial spoofing.
+- **DKIM** cryptographically signs every outgoing message; the receiving side verifies it against the public key published above.
+- **DMARC** ties SPF and DKIM into a policy the receiving server can act on, plus a reporting address for visibility into abuse attempts.
 
-```ini
-virtual_transport     = lmtp:unix:private/dovecot-lmtp
-local_recipient_maps  = ldap:/etc/postfix/ldap-users.cf
-virtual_mailbox_domains = rtnetlab.lan
-virtual_mailbox_base  = /var/mail/vhosts
-virtual_mailbox_maps  = ldap:/etc/postfix/ldap-users.cf
-
-# Rspamd as a milter
-milter_default_action = accept
-milter_protocol        = 6
-smtpd_milters           = inet:localhost:11332
-non_smtpd_milters       = inet:localhost:11332
-```
-</details>
-
-<details>
-<summary><strong>Dovecot — LDAP-backed auth (<code>dovecot-ldap.conf.ext</code>)</strong></summary>
-
-```ini
-hosts       = rtnetlab
-auth_bind   = yes
-base        = ou=users,dc=rtnetlab,dc=lan
-user_attrs  = homeDirectory=home,uidNumber=uid,gidNumber=gid
-pass_filter = (mail=%u)
-user_filter = (&(objectClass=posixAccount)(|(mail=%u)(mail=%n@rtnetlab.lan)))
-```
-</details>
-
-<details>
-<summary><strong>Rspamd — DKIM signing (<code>dkim_signing.conf</code>)</strong></summary>
-
-```ini
-path       = "/var/lib/rspamd/dkim/$domain.$selector.key";
-selector   = "mail";
-domain     = "rtnetlab.lan";
-sign_authenticated = true;
-sign_local          = true;
-use_domain          = "header";
-```
-</details>
+Rspamd sits in front of delivery as a milter, scoring every message and applying the DKIM signature before Dovecot ever sees it. Full configs for all of this are in [`configs/`](configs/).
 
 ## Testing & Validation
 
@@ -261,6 +192,39 @@ Every layer was verified independently before moving to the next — nothing was
 | Rspamd | Milter listening, dashboard reachable | `netstat -tulpn \| grep 12301` + web UI on `:11334` |
 | End-to-end | Full send/receive via web UI | Login → compose → send → verify LMTP delivery + headers |
 
+## Repository Structure
+
+```
+rtnetlab-secure-mail/
+├── README.md
+├── LICENSE
+├── .gitignore
+├── docs/
+│   └── RTNETLAB-Full-Report.pdf        # full build log — written in French
+├── configs/
+│   ├── README.md                        # what was redacted/fixed, and why
+│   ├── netplan/50-cloud-init.yaml
+│   ├── hosts/hosts.rtnetlab.snippet
+│   ├── bind9/
+│   │   ├── named.conf.local
+│   │   └── zones/db.rtnetlab.lan
+│   ├── postfix/
+│   │   ├── main.cf
+│   │   ├── master.cf.append
+│   │   └── ldap-users.cf
+│   ├── dovecot/
+│   │   ├── dovecot.conf
+│   │   ├── dovecot-ldap.conf.ext
+│   │   └── conf.d/{10-auth.conf, 10-ssl.conf, auth-ldap.conf.ext}
+│   ├── ldap/{01-users.ldif, 02-test-user.ldif}
+│   ├── ssl/{openssl-san.cnf, generate-cert.sh}
+│   ├── apache/webmail.rtnetlab.lan.conf
+│   ├── roundcube/config.inc.php
+│   ├── opendkim/{opendkim.conf, key.table, signing.table, trusted.hosts}
+│   └── rspamd/{worker-controller.inc, dkim_signing.conf}
+└── screenshots/
+```
+
 ## Reproducing the Lab
 
 The full report walks through every step with terminal output and screenshots; here's the shape of it:
@@ -275,26 +239,6 @@ The full report walks through every step with terminal output and screenshots; h
 8. **Site vitrine** — a small static front page (`www.rtnetlab.lan`) linking into the webmail
 9. **Mail security** — SPF, DKIM (OpenDKIM → Rspamd), DMARC, Rspamd scoring and dashboard
 
-> Full command-by-command detail, including every config file and terminal screenshot, is in [`docs/RTNETLAB-Full-Report.pdf`](#full-report).
-
-## Screenshots
-
-Grab these from the full report (or re-run the lab) and drop them into `screenshots/`:
-
-- [ ] DNS resolution (`dig`/`nslookup` output)
-- [ ] IMAP session over raw `telnet` (protocol-level proof it works)
-- [ ] `ldapsearch` output showing provisioned users
-- [ ] `openssl s_client` TLS handshake against port 587/993
-- [ ] Roundcube login screen + inbox with a test message
-- [ ] Rspamd web dashboard
-- [ ] The site vitrine boot animation (it's a nice touch — show it off)
-
-Once added, embed them like this:
-
-```md
-![Roundcube inbox](screenshots/webmail-login.png)
-```
-
 ## Skills Demonstrated
 
 **Networking** — TCP/IP, DNS zone design, SMTP/IMAP/POP3 protocol behavior, LDAP, HTTPS, protocol-level troubleshooting with `telnet`/`openssl s_client`
@@ -307,17 +251,15 @@ Once added, embed them like this:
 
 **Mail Systems Architecture** — MTA/MDA separation, virtual mailbox routing, LMTP delivery, Maildir storage, webmail integration
 
-**Testing & Validation** — protocol-level manual testing (not just "it loaded in the browser"), systematic layer-by-layer verification, reading and interpreting service logs
+**Testing & Validation** — protocol-level manual testing, not just "it loaded in the browser"; systematic layer-by-layer verification; reading and interpreting service logs
 
 ## Lessons Learned & What I'd Improve
 
-Being upfront about this — a lab build teaches you as much from its rough edges as from what worked:
-
-- **Domain naming drifted mid-build.** Postfix was initially configured against `rtnetlab.local` before the project standardized on `rtnetlab.lan` for the DNS zone. Everything works, but it's a good reminder to lock naming conventions before touching config files, not after.
-- **DKIM signing ended up configured twice** — once via OpenDKIM as a milter, later via Rspamd's built-in signer. Functionally fine, but redundant; a cleaner build picks one signing path and removes the other.
-- **Self-signed certificates work for a lab, not for production.** A real deployment needs its own internal CA (or ACME via an internal DNS-01 solver) so clients can actually validate the chain instead of clicking through warnings.
-- **No infrastructure-as-code.** Every service was configured by hand over SSH. That's fine for learning what each directive does, but it means the whole build isn't reproducible with a single command yet.
-- **Single point of failure.** One VM runs DNS, mail, directory, and web. Fine for a lab; a real intranet would split these across hosts (or at least containers) for resilience.
+- **Domain naming drifted mid-build.** Postfix was initially configured against `rtnetlab.local` before the project standardized on `rtnetlab.lan` for the DNS zone. Fixed in the configs here — see [`configs/README.md`](configs/README.md) for the full list of what was corrected.
+- **DKIM ended up signed twice** — once via OpenDKIM, later via Rspamd's built-in signer. Functionally fine, but redundant; a cleaner build picks one and removes the other.
+- **Self-signed certificates work for a lab, not for production.** A real deployment needs its own internal CA (or ACME via an internal DNS-01 solver) so clients can validate the chain instead of clicking through warnings.
+- **No infrastructure-as-code.** Every service was configured by hand over SSH — great for learning what each directive does, not yet reproducible with a single command.
+- **Single point of failure.** One VM runs DNS, mail, directory, and web. Fine for a lab; a real intranet would split these across hosts for resilience.
 
 ## Roadmap
 
@@ -332,21 +274,23 @@ Being upfront about this — a lab build teaches you as much from its rough edge
 
 ## Full Report
 
-The complete build — every command, every config file, every screenshot, 65 pages — is documented in [`docs/RTNETLAB-Full-Report.pdf`](docs/RTNETLAB-Full-Report.pdf). This README is the executive summary; the PDF is the lab notebook.
+The complete build — every command, every config file, every screenshot, 65 pages — is documented in [`docs/RTNETLAB-Full-Report.pdf`](docs/RTNETLAB-Full-Report.pdf).
+
+📄 **The report is written in French.** This README is the English executive summary; the PDF is the full lab notebook.
 
 ## About Me
 
 **Yahia Kemari** — Telecommunications Engineer (M2), USTHB, Algeria.
 Interested in networks, infrastructure, cybersecurity, and automation.
 
-- LinkedIn: `[add your link]`
-- Email: `[add your email]`
-- Portfolio / other projects: `[add your link]`
+- LinkedIn:
+- Email:
+- Portfolio / other projects:
 
-Open to opportunities in network engineering, systems/infrastructure administration, or security — feel free to reach out.
+Open to opportunities in network engineering, systems/infrastructure administration, or security.
 
 ## License
 
-Released under the [MIT License](LICENSE) — use it, learn from it, adapt it for your own lab.
+Released under the [MIT License](LICENSE).
 
 *Built as part of the Networks & Telecommunications curriculum at USTHB — Faculté de Génie Électrique — under the supervision of M. Hemis.*
